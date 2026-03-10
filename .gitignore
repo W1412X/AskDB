@@ -1,0 +1,82 @@
+# 环境与敏感信息
+.env
+.env.local
+.env.*.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+ENV/
+env/
+.venv/
+
+# IDE / 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# 日志（请求级日志等）
+log/
+logs/
+*.log
+
+# 数据与生成文件（initialize 输出、embedding 等）
+data/
+output/
+
+# 模型文件（本地下载的 embedding 等）
+data/models/
+models/
+
+# 缓存
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 测试 / 覆盖率
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# 临时与备份
+*.tmp
+*.bak
+*.sqlite
+*.db
+*.pkl
+*.bin
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+

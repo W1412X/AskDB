@@ -1,0 +1,74 @@
+{
+  "intent_divide": {
+    "model_name": "qwen3-max",
+    "max_retry_attempts": 3,
+    "max_tool_rounds": 4,
+    "column_query_top_k": 10
+  },
+  "sql_generation": {
+    "pipeline": {
+      "model_name": "qwen3-max",
+      "max_concurrency": 3,
+      "max_rows": 100,
+      "max_rounds_per_intent": 4
+    },
+    "intent_runtime": {
+      "model_name": "qwen3-max",
+      "max_runtime_iterations": 12,
+      "max_no_progress_rounds": 3,
+      "max_repeated_error_class": 2,
+      "timeout_ms_per_call": 30000,
+      "agent_max_retries": 3
+    },
+    "autolink": {
+      "model_name": "qwen3-max",
+      "max_rounds": 8,
+      "max_meta_tables": 8,
+      "max_explorer_steps": 2
+    }
+  },
+  "initialize": {
+    "agent": {
+      "model_name": "qwen3-max"
+    },
+    "embedding": {
+      "model_name": "BAAI/bge-large-zh-v1.5",
+      "model_path_name": "bge-large-zh-v1.5",
+      "normalize_embeddings": true,
+      "batch_size": 32,
+      "device": "",
+      "overwrite": false
+    }
+  },
+  "general": {
+    "summary": {
+      "model_name": "deepseek-chat",
+      "max_input_length": 10000
+    }
+  },
+  "column_agent": {
+    "sampling": {
+      "random_sample_max": 10,
+      "distinct_sample_max": 20,
+      "truncate_length_max": 1024,
+      "pattern_analysis_sample_size": 100,
+      "table_context_sample_size": 5
+    },
+    "token": {
+      "max_tokens_per_field": {
+        "sample_value": 200,
+        "comment": 500,
+        "semantic_summary": 1000
+      },
+      "max_total_tokens": 8000
+    },
+    "retry": {
+      "max_retries": 3,
+      "retry_backoff_factor": 2,
+      "retry_timeout": 30
+    },
+    "parallel": {
+      "max_parallel_columns": 5
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "default_connection": "primary",
+  "default_scope": [
+    "test_db_industrial_monitoring"
+  ],
+  "initialize_databases": [
+    "test_db_industrial_monitoring"
+  ],
+  "query_databases": [
+    "test_db_industrial_monitoring"
+  ],
+  "connections": {
+    "primary": {
+      "host": "localhost",
+      "port": 3306,
+      "user": "root",
+      "password": "",
+      "password_env": "DB_PASSWORD",
+      "database": "test_db_industrial_monitoring",
+      "charset": "utf8mb4",
+      "mincached": 1,
+      "maxcached": 5,
+      "maxshared": 3,
+      "maxconnections": 10,
+      "blocking": true,
+      "maxusage": 1000,
+      "setsession": [],
+      "reset": true,
+      "ping": 1
+    }
+  }
+}

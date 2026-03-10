@@ -1,0 +1,181 @@
+{
+  "description": "工业智能维护库的异常检查/查询需求，口语化描述，按维护人员水平分简单/中等/复杂",
+  "source_db": "test_db_industrial_monitoring",
+  "questions": [
+    {
+      "id": "simple_001",
+      "difficulty": "simple",
+      "question": "咱们系统里都有哪些工厂？把名字和所在地列出来。"
+    },
+    {
+      "id": "simple_002",
+      "difficulty": "simple",
+      "question": "现在有哪些生产线是在维护状态的？"
+    },
+    {
+      "id": "simple_003",
+      "difficulty": "simple",
+      "question": "设备类型表里都有哪些类型？厂家和预期寿命年数也一起看下。"
+    },
+    {
+      "id": "simple_004",
+      "difficulty": "simple",
+      "question": "查一下所有技师的姓名和技能等级。"
+    },
+    {
+      "id": "simple_005",
+      "difficulty": "simple",
+      "question": "苏州工业园那边有几个工厂？"
+    },
+    {
+      "id": "simple_006",
+      "difficulty": "simple",
+      "question": "最近有没有维护记录？把设备号、开始时间、描述看一下。"
+    },
+    {
+      "id": "simple_007",
+      "difficulty": "simple",
+      "question": "合格率低于 0.9 的抽检记录有哪些？批次号和产线要能看到。"
+    },
+    {
+      "id": "simple_008",
+      "difficulty": "simple",
+      "question": "每台设备上面装了几类传感器？按设备列一下。"
+    },
+    {
+      "id": "simple_009",
+      "difficulty": "simple",
+      "question": "各工厂的配电容量 capacity_kw 是多少？"
+    },
+    {
+      "id": "simple_010",
+      "difficulty": "simple",
+      "question": "有没有产线是空闲的？把产线名字和所属工厂标出来。"
+    },
+    {
+      "id": "medium_001",
+      "difficulty": "medium",
+      "question": "每个工厂下面各有几条生产线？按工厂汇总一下数量。"
+    },
+    {
+      "id": "medium_002",
+      "difficulty": "medium",
+      "question": "过去 30 天里，温度传感器有没有超过 80 度的读数？有的话是哪个传感器、哪台设备、什么时间？"
+    },
+    {
+      "id": "medium_003",
+      "difficulty": "medium",
+      "question": "振动值大于 5 的传感器读数查一下，要能看出是哪个设备、哪个传感器、时间戳和数值。"
+    },
+    {
+      "id": "medium_004",
+      "difficulty": "medium",
+      "question": "合格率低于 90% 的抽检批次是哪些？对应的产线、批次号、合格率、检验员都要有。"
+    },
+    {
+      "id": "medium_005",
+      "difficulty": "medium",
+      "question": "正在维护的产线上面挂了哪些设备？设备序列号和设备类型名要能看到。"
+    },
+    {
+      "id": "medium_006",
+      "difficulty": "medium",
+      "question": "每个工厂有多少名技师？按工厂列一下人数。"
+    },
+    {
+      "id": "medium_007",
+      "difficulty": "medium",
+      "question": "最近 7 天每个工厂的用电总量是多少？按工厂汇总 power_kwh。"
+    },
+    {
+      "id": "medium_008",
+      "difficulty": "medium",
+      "question": "安装超过 3 年的设备有哪些？要设备序列号、安装日期、所属产线。"
+    },
+    {
+      "id": "medium_009",
+      "difficulty": "medium",
+      "question": "技能等级 4 或 5 的技师都在哪个工厂？姓名、等级、工厂名。"
+    },
+    {
+      "id": "medium_010",
+      "difficulty": "medium",
+      "question": "每条产线最近一次质量抽检的批次号、合格率、检验员是谁？"
+    },
+    {
+      "id": "medium_011",
+      "difficulty": "medium",
+      "question": "哪台设备被维护次数最多？把设备序列号、设备类型和维护次数排个序。"
+    },
+    {
+      "id": "medium_012",
+      "difficulty": "medium",
+      "question": "电流或电压类传感器的读数里，有没有超过 400 的？有的话列出传感器、设备、时间和数值。"
+    },
+    {
+      "id": "medium_013",
+      "difficulty": "medium",
+      "question": "每个设备类型总共有多少台在用设备？按类型名统计。"
+    },
+    {
+      "id": "medium_014",
+      "difficulty": "medium",
+      "question": "过去 60 天每小时能耗记录里，单小时用电超过 1500 的时段有哪些？工厂、时间、功率。"
+    },
+    {
+      "id": "medium_015",
+      "difficulty": "medium",
+      "question": "哪些产线既不是 active 也不是 idle？把产线名、状态、所属工厂列出来。"
+    },
+    {
+      "id": "complex_001",
+      "difficulty": "complex",
+      "question": "找出那些已经超过该设备类型预期寿命年限还在用的设备：按安装日期和类型预期寿命算，超龄的列出来，要设备序列号、类型、安装日期、预期寿命年数、所属产线和工厂。"
+    },
+    {
+      "id": "complex_002",
+      "difficulty": "complex",
+      "question": "哪些设备最近既有高温异常（温度读数超过 85）又有振动异常（振动读数超过 6）？要设备信息、最近一次超温时间和数值、最近一次振动超限时间和数值。"
+    },
+    {
+      "id": "complex_003",
+      "difficulty": "complex",
+      "question": "按工厂统计：每个工厂的产线数、设备总数、技师数、最近 30 天维护次数、最近 30 天平均抽检合格率，一起出一个汇总表。"
+    },
+    {
+      "id": "complex_004",
+      "difficulty": "complex",
+      "question": "找出能耗异常偏高的工厂：和该工厂过去 60 天的平均每小时用电比，某天某小时用电超过平均值 1.5 倍的记录列出来，要工厂名、时间、该点功率、该厂平均功率。"
+    },
+    {
+      "id": "complex_005",
+      "difficulty": "complex",
+      "question": "哪些产线最近 30 天维护次数大于 5 且平均抽检合格率低于 0.92？产线名、所属工厂、维护次数、平均合格率都要。"
+    },
+    {
+      "id": "complex_006",
+      "difficulty": "complex",
+      "question": "同一台设备上，温度传感器和振动传感器最近 7 天的读数里，分别取各自的最大值；如果该设备温度最大值大于 75 且振动最大值大于 4，就标为需关注，列出这些设备的序列号、类型、产线、温度最大值、振动最大值。"
+    },
+    {
+      "id": "complex_007",
+      "difficulty": "complex",
+      "question": "按技师统计每人参与的维护次数和涉及的不同设备数；找出维护次数多但涉及设备数很少的技师（比如维护次数前五且涉及设备数少于 3），列出姓名、工厂、维护次数、涉及设备数。"
+    },
+    {
+      "id": "complex_008",
+      "difficulty": "complex",
+      "question": "每个工厂里，产线状态为 active 的设备数、idle 的设备数、maintenance 的设备数各是多少？按工厂和状态汇总。"
+    },
+    {
+      "id": "complex_009",
+      "difficulty": "complex",
+      "question": "最近 30 天有传感器读数、且该设备类型预期寿命不超过 8 年的设备中，安装日期最早的一批（每类型只取安装最早的一台），列设备序列号、类型、安装日期、预期寿命、所属产线。"
+    },
+    {
+      "id": "complex_010",
+      "difficulty": "complex",
+      "question": "抽检合格率曾低于 0.88 的产线，它们上面挂的设备的维护记录总数是多少？按产线汇总：产线名、所属工厂、该产线设备维护总次数。"
+    }
+  ]
+}

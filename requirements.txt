@@ -1,0 +1,21 @@
+# 数据库
+pymysql
+DBUtils
+
+# LangChain 与 LLM
+langchain>=1.2.0
+langchain-openai>=1.1.0
+langchain-qwq
+langchain-deepseek
+pydantic>=2.0
+
+# 向量与嵌入
+sentence-transformers
+numpy
+
+# 工具
+python-dotenv
+sqlparse
+
+# 测试/数据生成（tests/db_generation）
+Faker

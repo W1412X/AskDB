@@ -1,0 +1,43 @@
+{
+  "default_model": "deepseek-chat",
+  "fallback_order": [
+    "qwen3-max",
+    "deepseek-chat"
+  ],
+  "call_policy": {
+    "timeout_seconds": 90,
+    "max_transport_retries": 2,
+    "max_format_retries": 3,
+    "retryable_error_classes": [
+      "timeout",
+      "transport",
+      "rate_limit"
+    ]
+  },
+  "models": {
+    "gpt-5.2": {
+      "provider": "openai",
+      "model_name": "gpt-5.2",
+      "api_key": "",
+      "api_key_env": "OPENAI_API_KEY",
+      "base_url": "https://api.openai.com/v1",
+      "base_url_env": ""
+    },
+    "qwen3-max": {
+      "provider": "qwen",
+      "model_name": "qwen3-max",
+      "api_key": "",
+      "api_key_env": "QWEN_API_KEY",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "base_url_env": "QWEN_BASE_URL"
+    },
+    "deepseek-chat": {
+      "provider": "deepseek",
+      "model_name": "deepseek-chat",
+      "api_key": "",
+      "api_key_env": "DEEPSEEK_API_KEY",
+      "base_url": "https://api.deepseek.com/v1",
+      "base_url_env": "DEEPSEEK_BASE_URL"
+    }
+  }
+}
