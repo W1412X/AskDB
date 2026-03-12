@@ -1,6 +1,7 @@
-# 数据库
+# 数据库（MySQL 8 使用 caching_sha2_password 时需 cryptography）
 pymysql
 DBUtils
+cryptography
 
 # LangChain 与 LLM
 langchain>=1.2.0
