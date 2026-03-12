@@ -32,8 +32,8 @@
       "model_name": "qwen3-max"
     },
     "embedding": {
-      "model_name": "BAAI/bge-large-zh-v1.5",
-      "model_path_name": "bge-large-zh-v1.5",
+      "model_name": "BAAI/bge-small-zh-v1.5",
+      "model_path_name": "bge-small-zh-v1.5",
       "normalize_embeddings": true,
       "batch_size": 32,
       "device": "",

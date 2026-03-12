@@ -23,6 +23,11 @@ def _config_dir() -> Path:
     return (Path(__file__).resolve().parent / "json").resolve()
 
 
+def get_config_dir() -> Path:
+    """Return the directory containing database.json, models.json, stages.json (for Web UI read/write)."""
+    return _config_dir()
+
+
 def _load_json_config(filename: str) -> Dict[str, Any]:
     path = _config_dir() / filename
     with path.open("r", encoding="utf-8") as f:
