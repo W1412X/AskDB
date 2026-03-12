@@ -9,7 +9,17 @@ import os
 from utils.logger import get_logger
 logger = get_logger("initialize_embedding_query")
 _EMBED_CFG = get_app_config().stages.initialize.embedding
-embedding_tool = EmbeddingTool(model_path=DataPaths.model_embedding_path(_EMBED_CFG.model_path_name))
+
+_embedding_tool: EmbeddingTool | None = None
+_warned_missing_db_dirs: set[str] = set()
+
+
+def _get_embedding_tool() -> EmbeddingTool:
+    """Lazy-load embedding tool so FastAPI can start without loading the model at import time."""
+    global _embedding_tool
+    if _embedding_tool is None:
+        _embedding_tool = EmbeddingTool(model_path=DataPaths.model_embedding_path(_EMBED_CFG.model_path_name))
+    return _embedding_tool
 def get_column_embedding(db:str,table:str,column:str) -> np.ndarray:
     """获取指定数据库/表/列中的embedding"""
     embedding_path = DataPaths.default().column_embedding_path(db, table, column)
@@ -42,11 +52,14 @@ def get_columns_by_text(text:str,databases: List[str]) -> List[Dict[str, Any]]:
     for db_name in databases:
         db_path = DataPaths.default().initialize_agent_database_dir(db_name)
         if not os.path.exists(db_path):
-            logger.warning(
-                "数据库目录不存在，跳过",
-                database_name=db_name,
-                path=str(db_path)
-            )
+            key = f"{db_name}:{db_path}"
+            if key not in _warned_missing_db_dirs:
+                _warned_missing_db_dirs.add(key)
+                logger.warning(
+                    "数据库目录不存在，跳过（每库仅提示一次）",
+                    database_name=db_name,
+                    path=str(db_path)
+                )
             continue
             
         table_paths=os.listdir(db_path)
@@ -74,7 +87,7 @@ def get_columns_by_text(text:str,databases: List[str]) -> List[Dict[str, Any]]:
     for column in columns:
         try:
             embedding = get_column_embedding(column["database_name"], column["table_name"], column["column_name"])
-            similarity = embedding_tool.get_similarity(text, embedding)
+            similarity = _get_embedding_tool().get_similarity(text, embedding)
             column["similarity"] = similarity
             valid_columns.append(column)
         except FileNotFoundError:

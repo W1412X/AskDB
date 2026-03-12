@@ -190,6 +190,8 @@ def _run_query(query: str, *, context: Dict[str, Any], model_name: str, max_conc
 
 def main(argv: List[str] | None = None) -> int:
     cfg = get_app_config()
+    # Ensure fresh checkout has required base dirs (data/, log/).
+    DataPaths.default().ensure_base_dirs()
     parser = argparse.ArgumentParser(description="Interactive SQL generation terminal.")
     parser.add_argument("--skip-init", action="store_true", help="Skip initialize/embedding bootstrap check.")
     parser.add_argument("--query", default="", help="Run one query once, then exit.")

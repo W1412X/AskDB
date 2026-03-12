@@ -27,6 +27,19 @@ from stages.sql_generation.autolink.initialize_catalog import (
 def _search_local(text: str, databases: List[str], top_k: int) -> tuple[List[Dict[str, Any]], str]:
     try:
         from stages.initialize.embedding.query import get_columns_by_text
+        from utils.data_paths import DataPaths
+
+        # Fast diagnostic: if initialize artifacts directory is missing, local retrieval can't work.
+        missing = []
+        for db in databases:
+            try:
+                p = DataPaths.default().initialize_agent_database_dir(db)
+                if not p.exists():
+                    missing.append(str(db))
+            except Exception:
+                missing.append(str(db))
+        if databases and len(missing) == len(databases):
+            return [], f"missing_initialize_dir:{','.join(missing)[:120]}"
 
         cols = get_columns_by_text(text=text, databases=databases)
         cols = sorted(cols, key=lambda x: x.get("similarity", 0), reverse=True)[: int(top_k)]

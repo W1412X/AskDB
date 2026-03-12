@@ -33,6 +33,31 @@ class DataPaths:
     def data_dir(self) -> Path:
         return self.project_root / "data"
 
+    def log_dir(self) -> Path:
+        return self.project_root / "log"
+
+    def ensure_base_dirs(self) -> None:
+        """
+        Create required base directories for a fresh checkout.
+
+        Rationale:
+        - Repo may not ship with `data/` or `log/` by default.
+        - Runtime should be able to start and write request logs without manual mkdir.
+        - Initialize artifacts are still optional; these dirs are just a stable layout.
+        """
+        # data/
+        self.data_dir().mkdir(parents=True, exist_ok=True)
+        # data/initialize/...
+        self.initialize_agent_dir().mkdir(parents=True, exist_ok=True)
+        self.initialize_embedding_dir().mkdir(parents=True, exist_ok=True)
+        self.initialize_checkpoints_dir().mkdir(parents=True, exist_ok=True)
+        self.initialize_progress_dir().mkdir(parents=True, exist_ok=True)
+        self.initialize_token_usage_dir().mkdir(parents=True, exist_ok=True)
+        # data/models/embedding (optional model cache directory)
+        (self.data_dir() / "models" / "embedding").mkdir(parents=True, exist_ok=True)
+        # log/
+        self.log_dir().mkdir(parents=True, exist_ok=True)
+
     # --- initialize stage ---
     def initialize_dir(self) -> Path:
         return self.data_dir() / "initialize"
@@ -104,4 +129,3 @@ class DataPaths:
         return cls.default().data_dir() / "models" / "embedding" / model_name
 
 __all__ = ["DataPaths"]
-

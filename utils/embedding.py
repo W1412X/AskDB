@@ -88,6 +88,15 @@ class EmbeddingTool:
                     "Please install `transformers` and `torch`, or provide a valid sentence-transformers model directory."
                 ) from imp_exc
 
+            # When model_ref is a local path that doesn't exist, HF expects a repo id (e.g. "BAAI/bge-large-zh-v1.5").
+            # Use model_name so the model can be downloaded on first use.
+            hf_ref = model_ref
+            try:
+                if not Path(model_ref).exists():
+                    hf_ref = model_name
+            except Exception:
+                hf_ref = model_name
+
             cache_dir_str = str(cache_dir) if cache_dir is not None else None
             tok_kwargs = {
                 "cache_dir": cache_dir_str,
@@ -95,7 +104,7 @@ class EmbeddingTool:
                 "trust_remote_code": trust_remote_code,
             }
             tok_kwargs = {k: v for k, v in tok_kwargs.items() if v is not None}
-            self._tokenizer = AutoTokenizer.from_pretrained(model_ref, **tok_kwargs)
+            self._tokenizer = AutoTokenizer.from_pretrained(hf_ref, **tok_kwargs)
 
             model_kwargs = {
                 "cache_dir": cache_dir_str,
@@ -103,7 +112,7 @@ class EmbeddingTool:
                 "trust_remote_code": trust_remote_code,
             }
             model_kwargs = {k: v for k, v in model_kwargs.items() if v is not None}
-            hf_model = AutoModel.from_pretrained(model_ref, **model_kwargs)
+            hf_model = AutoModel.from_pretrained(hf_ref, **model_kwargs)
 
             # device selection
             if device:

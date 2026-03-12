@@ -95,6 +95,10 @@ def run_sql_generation_stage(
 
     每次用户请求会生成一个详细日志文件 log/request_{request_id}_{时间}.log，记录意图分解、autolink、SQL 生成等全链路。
     """
+    # Fresh checkouts may not have `data/` or `log/` directories.
+    from utils.data_paths import DataPaths
+
+    DataPaths.default().ensure_base_dirs()
     request_id = new_request_id()
     log_path = attach_request_log_file(request_id)
     logger.info("请求开始 | request_id=%s | 详细日志: %s", request_id, log_path)
