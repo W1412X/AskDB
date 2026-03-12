@@ -67,9 +67,18 @@ def _apply_hf_endpoint_from_env() -> None:
     if dotenv_path.exists():
         from dotenv import load_dotenv
         load_dotenv(dotenv_path, override=True)
-    if not os.environ.get("HF_ENDPOINT"):
+    _set_hf_endpoint_and_reload(os.environ.get("HF_ENDPOINT"))
+
+
+def _set_hf_endpoint_and_reload(endpoint: str | None) -> None:
+    """Set HF_ENDPOINT and reload huggingface_hub constants so mirror is used (call before any HF access)."""
+    import os
+    import importlib
+
+    if not endpoint or not str(endpoint).strip():
         return
-    # huggingface_hub reads HF_ENDPOINT at import time; reload constants so new endpoint is used
+    ep = str(endpoint).strip().rstrip("/")
+    os.environ["HF_ENDPOINT"] = ep
     try:
         import huggingface_hub.constants as hh_constants
         importlib.reload(hh_constants)
@@ -90,6 +99,12 @@ def run_initialize() -> None:
     from utils.data_paths import DataPaths
 
     cfg = get_app_config()
+    # 尽早应用 stages.json 中的 hf_endpoint，确保后续 HF/ST 请求都走镜像
+    emb_cfg = getattr(cfg.stages.initialize, "embedding", None)
+    if emb_cfg is not None:
+        hf_ep = getattr(emb_cfg, "hf_endpoint", None) or ""
+        if hf_ep and str(hf_ep).strip():
+            _set_hf_endpoint_and_reload(str(hf_ep).strip())
     target_databases = sorted(
         set(cfg.get_initialize_databases()) | set(cfg.get_default_database_scope())
     )
@@ -110,13 +125,14 @@ def run_initialize() -> None:
         local_only = False
         if getattr(emb_cfg, "model_path_name", None):
             candidate = DataPaths.model_embedding_path(str(emb_cfg.model_path_name))
-            if candidate.exists():
-                model_path = str(candidate)
-                local_only = True
+            model_path = str(candidate)
+            local_only = candidate.exists()
+        hf_endpoint = getattr(emb_cfg, "hf_endpoint", None) or ""
         build_embeddings(
             database_names=missing_embedding,
             model_name=emb_cfg.model_name,
             model_path=model_path,
+            hf_endpoint=hf_endpoint.strip() or None,
             normalize_embeddings=emb_cfg.normalize_embeddings,
             batch_size=emb_cfg.batch_size,
             device=emb_cfg.device or None,

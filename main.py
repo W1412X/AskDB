@@ -67,15 +67,17 @@ def _ensure_initialize_artifacts() -> None:
         model_path = None
         local_only = False
         if getattr(emb_cfg, "model_path_name", None):
+            # Always provide a local target dir so EmbeddingTool can snapshot_download via hf_endpoint mirror.
             candidate = DataPaths.model_embedding_path(str(emb_cfg.model_path_name))
-            if candidate.exists():
-                model_path = str(candidate)
-                local_only = True
+            model_path = str(candidate)
+            local_only = candidate.exists()
+        hf_endpoint = str(getattr(emb_cfg, "hf_endpoint", "") or "").strip() or None
         print(f"[bootstrap] initialize embeddings missing for: {', '.join(missing_embedding)}")
         build_embeddings(
             database_names=missing_embedding,
             model_name=emb_cfg.model_name,
             model_path=model_path,
+            hf_endpoint=hf_endpoint,
             normalize_embeddings=emb_cfg.normalize_embeddings,
             batch_size=emb_cfg.batch_size,
             device=emb_cfg.device or None,

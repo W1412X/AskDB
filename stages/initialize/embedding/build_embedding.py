@@ -177,6 +177,7 @@ def build_embeddings(
     *,
     model_name: str = "BAAI/bge-large-zh-v1.5",
     model_path: Optional[str] = None,
+    hf_endpoint: Optional[str] = None,
     normalize_embeddings: bool = True,
     batch_size: int = 32,
     device: Optional[str] = None,
@@ -185,6 +186,7 @@ def build_embeddings(
 ) -> List[Path]:
     """
     Build per-column embedding pickles for multiple databases.
+    model_path 指向的目录若不存在会从 HuggingFace（或 hf_endpoint）下载到该目录。
     """
     start = time.time()
     logger.workflow_start(
@@ -199,6 +201,7 @@ def build_embeddings(
     tool = EmbeddingTool(
         model_name=model_name,
         model_path=model_path,
+        hf_endpoint=hf_endpoint,
         normalize_embeddings=normalize_embeddings,
         batch_size=batch_size,
         device=device,

@@ -163,6 +163,7 @@ class InitializeEmbeddingSettings(BaseModel):
     batch_size: int = 32
     device: str = ""
     overwrite: bool = False
+    hf_endpoint: str = ""  # HuggingFace 镜像或 API 地址，如 https://hf-mirror.com，空则用默认
 
 
 class InitializeSettings(BaseModel):

@@ -37,7 +37,8 @@
       "normalize_embeddings": true,
       "batch_size": 32,
       "device": "",
-      "overwrite": false
+      "overwrite": false,
+      "hf_endpoint": "https://hf-mirror.com"
     }
   },
   "general": {

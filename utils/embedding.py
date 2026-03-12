@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 from typing import Optional, Sequence, Union
+import os
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
@@ -8,12 +9,35 @@ from sentence_transformers import SentenceTransformer
 ModelRef = Union[str, Path]
 
 
+def _download_embedding_model_to_dir(
+    repo_id: str,
+    local_dir: Union[str, Path],
+    hf_endpoint: Optional[str] = None,
+) -> None:
+    """从 HuggingFace 下载模型到指定目录。若 hf_endpoint 非空则用作镜像（显式传给 HfApi），失败则抛错。"""
+    local_dir = Path(local_dir).expanduser().resolve()
+    local_dir.mkdir(parents=True, exist_ok=True)
+    endpoint = (str(hf_endpoint).strip().rstrip("/")) if hf_endpoint and str(hf_endpoint).strip() else None
+    from huggingface_hub import HfApi
+    api = HfApi(endpoint=endpoint)
+    api.snapshot_download(
+        repo_id=repo_id,
+        local_dir=str(local_dir),
+    )
+    # 必须确认目录内已有模型文件，否则说明下载未真正落到此目录
+    if not any(local_dir.iterdir()):
+        raise RuntimeError(
+            f"下载后目录仍为空: {local_dir}，请检查网络或 hf_endpoint 配置（如 https://hf-mirror.com）"
+        )
+
+
 class EmbeddingTool:
     def __init__(
         self,
-        model_name: str = "BAAI/bge-large-zh-v1.5",
+        model_name: str = "BAAI/bge-small-zh-v1.5",
         *,
         model_path: Optional[ModelRef] = None,
+        hf_endpoint: Optional[str] = None,
         normalize_embeddings: bool = True,
         batch_size: int = 32,
         device: Optional[str] = None,
@@ -24,10 +48,12 @@ class EmbeddingTool:
     ):
         """
         支持加载 HuggingFace 模型名或本地模型目录。
+        若 model_path 指向的目录不存在，会从 HuggingFace（或 hf_endpoint 配置的镜像）下载到该目录。
 
         Args:
-            model_name: HF 模型 id（例如 "BAAI/bge-large-zh-v1.5"）
-            model_path: 本地模型目录路径（优先于 model_name）
+            model_name: HF 模型 id（例如 "BAAI/bge-small-zh-v1.5"）
+            model_path: 本地模型目录路径；不存在时会自动下载到此目录
+            hf_endpoint: HuggingFace 镜像或 API 地址（如 https://hf-mirror.com），空则用默认
             normalize_embeddings: 是否归一化 embedding（推荐检索场景开启）
             batch_size: 批量向量化 batch size
             device: "cpu"/"cuda" 等，None 则由 sentence-transformers 自动选择
@@ -46,17 +72,37 @@ class EmbeddingTool:
         self.max_length = max_length
         self.trust_remote_code = trust_remote_code
 
+        # Keep startup logs clean: transformers may emit INFO-level "LOAD REPORT" for
+        # harmless unexpected keys (e.g. embeddings.position_ids). Default to WARNING.
+        # Override with env: ASKDB_HF_VERBOSITY=INFO|WARNING|ERROR
+        _configure_hf_verbosity()
+
         model_ref: str
         if model_path is not None:
-            model_ref = str(model_path)
+            p = Path(str(model_path)).expanduser().resolve()
+            if not p.exists():
+                if local_files_only:
+                    raise RuntimeError(
+                        f"本地模型目录不存在且禁止下载: {p}，请先下载模型到该目录或移除 local_files_only"
+                    )
+                _download_embedding_model_to_dir(
+                    repo_id=model_name,
+                    local_dir=p,
+                    hf_endpoint=str(hf_endpoint).strip() if hf_endpoint else None,
+                )
+            if not p.exists() or not any(p.iterdir()):
+                raise RuntimeError(
+                    f"模型目录无效或为空: {p}，无法加载 embedding 模型，也不会生成 pkl"
+                )
+            model_ref = str(p)
         else:
             model_ref = model_name
 
         # If it looks like an existing local path, use it directly.
         try:
-            p = Path(model_ref).expanduser()
-            if p.exists():
-                model_ref = str(p)
+            pp = Path(model_ref).expanduser()
+            if pp.exists():
+                model_ref = str(pp)
         except Exception:
             pass
 
@@ -227,5 +273,33 @@ class EmbeddingTool:
 
         denom = (np.linalg.norm(text_vec) * np.linalg.norm(emb_vec)) + 1e-12
         return float(np.dot(text_vec, emb_vec) / denom)
+
+
+def _configure_hf_verbosity() -> None:
+    level = str(os.environ.get("ASKDB_HF_VERBOSITY") or "").strip().upper()
+    if not level:
+        level = "WARNING"
+    try:
+        from transformers.utils import logging as tf_logging
+
+        if level == "INFO":
+            tf_logging.set_verbosity_info()
+        elif level == "ERROR":
+            tf_logging.set_verbosity_error()
+        else:
+            tf_logging.set_verbosity_warning()
+    except Exception:
+        pass
+    try:
+        from huggingface_hub.utils import logging as hub_logging
+
+        if level == "INFO":
+            hub_logging.set_verbosity_info()
+        elif level == "ERROR":
+            hub_logging.set_verbosity_error()
+        else:
+            hub_logging.set_verbosity_warning()
+    except Exception:
+        pass
 
 __all__ = ["EmbeddingTool"]

@@ -18,7 +18,13 @@ def _get_embedding_tool() -> EmbeddingTool:
     """Lazy-load embedding tool so FastAPI can start without loading the model at import time."""
     global _embedding_tool
     if _embedding_tool is None:
-        _embedding_tool = EmbeddingTool(model_path=DataPaths.model_embedding_path(_EMBED_CFG.model_path_name))
+        model_path = DataPaths.model_embedding_path(_EMBED_CFG.model_path_name)
+        hf_endpoint = getattr(_EMBED_CFG, "hf_endpoint", None) or ""
+        _embedding_tool = EmbeddingTool(
+            model_name=_EMBED_CFG.model_name,
+            model_path=str(model_path),
+            hf_endpoint=hf_endpoint.strip() or None,
+        )
     return _embedding_tool
 def get_column_embedding(db:str,table:str,column:str) -> np.ndarray:
     """获取指定数据库/表/列中的embedding"""
