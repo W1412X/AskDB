@@ -385,6 +385,11 @@ def _step_plan_ra(
 
 def _step_render_sql(*, node: IntentNode, schema: Dict[str, Any], context: Dict[str, Any], model: Any) -> StepResult:
     ra_plan = node.artifacts.get("ra_plan") or {}
+    required_cols = []
+    if isinstance(ra_plan, dict):
+        oc = ra_plan.get("output_contract") or {}
+        if isinstance(oc, dict):
+            required_cols = [str(x).strip() for x in list(oc.get("required_columns") or []) if str(x).strip()]
     sql_render_input = {
         "intent": _intent_payload(node),
         "ra_plan": ra_plan,
@@ -415,6 +420,50 @@ def _step_render_sql(*, node: IntentNode, schema: Dict[str, Any], context: Dict[
             error_class="sql_render_failed",
             state_delta={"candidate_count": 0},
         )
+
+    if required_cols and candidates:
+        filtered = []
+        missing_reports = []
+        import re
+
+        def _key(s: str) -> str:
+            return (s or "").strip().lower().split(".")[-1]
+
+        req_keys = [_key(x) for x in required_cols if _key(x)]
+        for cand in candidates:
+            sql = str((cand or {}).get("sql") or "")
+            expected = (cand or {}).get("expected_columns") or []
+            expected_keys = {_key(str(x)) for x in expected if _key(str(x))}
+            ok = True
+            missing = []
+            for rk in req_keys:
+                if rk in expected_keys:
+                    continue
+                if re.search(rf"\\b{re.escape(rk)}\\b", sql, flags=re.IGNORECASE):
+                    continue
+                ok = False
+                missing.append(rk)
+            if ok:
+                filtered.append(cand)
+            else:
+                missing_reports.append({"missing": missing, "sql_preview": sql.strip()[:120]})
+
+        if not filtered:
+            return StepResult(
+                status=StepStatus.ADVANCE,
+                next_phase=IntentExecutionState.PLANNING_RA,
+                artifacts={"sql_candidates": candidates},
+                errors=[
+                    IntentError(
+                        type="SQL_SEMANTIC_GATE_FAILED",
+                        message=f"sql candidates missing required_columns: {required_cols}",
+                        hint=ErrorHint.REPLAN_RA,
+                    )
+                ],
+                error_class="sql_semantic_gate_failed",
+                state_delta={"required_columns": required_cols, "rejected_candidates": missing_reports[:3]},
+            )
+        candidates = filtered
     return StepResult(
         status=StepStatus.ADVANCE,
         next_phase=IntentExecutionState.VALIDATING_SQL,
