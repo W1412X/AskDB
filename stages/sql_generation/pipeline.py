@@ -225,6 +225,7 @@ def resume_sql_generation_stage_after_user_reply(
     state: GlobalState,
     ticket_id: str,
     user_message: str,
+    message_id: Optional[str] = None,
     context: Optional[Dict[str, Any]] = None,
     model_name: Optional[str] = None,
 ) -> SQLStageResult:
@@ -245,7 +246,7 @@ def resume_sql_generation_stage_after_user_reply(
             return SQLStageResult(status=StageStatus.FAILED, state=state, error="divide-stage unknown ticket_id")
         if record.resolved:
             return SQLStageResult(status=StageStatus.FAILED, state=state, error="divide-stage ticket already resolved")
-        ticket = repo.append_turn(ticket_id=ticket_id, user_message=user_message)
+        ticket = repo.append_turn(ticket_id=ticket_id, user_message=user_message, message_id=message_id)
         repo.mark_resolved(ticket_id, DialogResolutionType.RESOLVED)
         previous_messages = [str(turn.get("user_message") or "") for turn in list(ticket.turns or []) if str(turn.get("user_message") or "").strip()]
         enriched_query = build_intent_divide_resume_query(
@@ -279,7 +280,13 @@ def resume_sql_generation_stage_after_user_reply(
     if resume_phase and str(record.phase or "").strip() and resume_phase != str(record.phase):
         return SQLStageResult(status=StageStatus.FAILED, state=state, error="ticket phase/resume_phase mismatch")
 
-    dialog_out = submit_dialog_user_message(state=state, ticket_id=ticket_id, user_message=user_message, model_name=resolved_model_name)
+    dialog_out = submit_dialog_user_message(
+        state=state,
+        ticket_id=ticket_id,
+        user_message=user_message,
+        model_name=resolved_model_name,
+        message_id=message_id,
+    )
     intent_id = str(dialog_out.get("intent_id") or "")
     if not intent_id:
         return SQLStageResult(status=StageStatus.FAILED, state=state, error="dialog resolution missing intent_id")

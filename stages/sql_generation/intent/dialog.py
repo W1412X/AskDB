@@ -11,7 +11,11 @@ from config.llm_config import get_llm
 from stages.sql_generation.dag.models import GlobalState
 from stages.sql_generation.intent.agents.clarifier import run_clarifier
 from stages.sql_generation.intent.dialog_queue import get_dialog_repository
+from stages.sql_generation.intent.clarification_utils import default_next_ask, is_actionable_hints, merge_hints
 from stages.sql_generation.intent.models import DialogResolutionType
+from utils.logger import get_logger
+
+logger = get_logger("sql_generation_dialog")
 
 
 def _intent_payload(node: Any) -> Dict[str, Any]:
@@ -73,9 +77,10 @@ def submit_dialog_user_message(
     ticket_id: str,
     user_message: str,
     model_name: Optional[str] = None,
+    message_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     repo = get_dialog_repository(state)
-    ticket = repo.append_turn(ticket_id=ticket_id, user_message=user_message)
+    ticket = repo.append_turn(ticket_id=ticket_id, user_message=user_message, message_id=message_id)
     node = state.intent_map.get(ticket.intent_id)
     if node is None:
         raise ValueError(f"unknown intent_id in ticket: {ticket.intent_id}")
@@ -97,15 +102,46 @@ def submit_dialog_user_message(
 
     max_turns = int(ticket_payload.get("max_turns") or 0) or 3
     turn_count = len(ticket.turns)
-    merged = dict(current_hints)
-    if isinstance(out.hints, dict):
-        merged.update(out.hints)
+    resolved_before_gate = bool(out.resolved)
+    merged = merge_hints(current_hints, out.hints if isinstance(out.hints, dict) else {})
+
+    resolved_after_gate = resolved_before_gate
+    next_ask = out.next_ask if isinstance(out.next_ask, dict) else None
+    if resolved_before_gate and not is_actionable_hints(merged):
+        resolved_after_gate = False
+        next_ask = default_next_ask(existing_ask=ticket_payload.get("ask") if isinstance(ticket_payload.get("ask"), dict) else None)
+
     node.artifacts["user_hints"] = merged
+
+    state.audit_log.append(
+        {
+            "event": "clarifier",
+            "ticket_id": ticket.ticket_id,
+            "intent_id": ticket.intent_id,
+            "question_id": ticket.question_id,
+            "turn_count": turn_count,
+            "resolved_before_gate": resolved_before_gate,
+            "resolved_after_gate": resolved_after_gate,
+            "hints_keys": sorted(list(merged.keys())),
+            "known_tables": len(list(merged.get("known_tables") or [])) if isinstance(merged.get("known_tables"), list) else 0,
+            "known_columns": len(list(merged.get("known_columns") or [])) if isinstance(merged.get("known_columns"), list) else 0,
+            "next_ask_preview": str((next_ask or {}).get("request") or "")[:80] if isinstance(next_ask, dict) else "",
+        }
+    )
+    logger.info(
+        "clarifier | intent_id=%s ticket_id=%s resolved=%s->%s turns=%s hints=%s",
+        ticket.intent_id,
+        ticket.ticket_id,
+        resolved_before_gate,
+        resolved_after_gate,
+        turn_count,
+        ",".join(sorted(list(merged.keys()))),
+    )
 
     checkpoint = node.artifacts.get("checkpoint") or {}
     resume_phase = str(ticket.payload.get("resume_phase") or checkpoint.get("phase") or "BUILDING_SCHEMA")
 
-    if out.resolved:
+    if resolved_after_gate:
         repo.mark_resolved(ticket_id, DialogResolutionType.RESOLVED)
         checkpoint["phase"] = resume_phase
         node.artifacts["checkpoint"] = checkpoint
@@ -136,7 +172,6 @@ def submit_dialog_user_message(
             "next_action": {"resume_phase": resume_phase},
         }
 
-    next_ask = out.next_ask if isinstance(out.next_ask, dict) else None
     if next_ask:
         ticket.payload["ask"] = dict(next_ask)
     return {

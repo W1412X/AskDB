@@ -50,11 +50,30 @@ class DialogRepository:
                 return ticket
         return None
 
-    def append_turn(self, *, ticket_id: str, user_message: str, parsed: Optional[Dict[str, Any]] = None) -> DialogTicketRecord:
+    def append_turn(
+        self,
+        *,
+        ticket_id: str,
+        user_message: str,
+        parsed: Optional[Dict[str, Any]] = None,
+        message_id: Optional[str] = None,
+    ) -> DialogTicketRecord:
         ticket = self._state.dialog_state.tickets.get(ticket_id)
         if ticket is None:
             raise ValueError(f"unknown ticket_id: {ticket_id}")
-        ticket.turns.append({"user_message": str(user_message), "parsed": parsed or {}, "created_at": time.time()})
+        msg_id = str(message_id or "").strip()
+        if msg_id:
+            for turn in ticket.turns:
+                if str((turn or {}).get("message_id") or "").strip() == msg_id:
+                    return ticket
+        ticket.turns.append(
+            {
+                "user_message": str(user_message),
+                "parsed": parsed or {},
+                "created_at": time.time(),
+                "message_id": msg_id,
+            }
+        )
         return ticket
 
     def mark_resolved(self, ticket_id: str, resolution_type: DialogResolutionType) -> DialogTicketRecord:
