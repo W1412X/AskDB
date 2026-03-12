@@ -11,11 +11,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from config.app_config import get_app_config
 from stages.intent_divide.main import divide_intents_with_audit
 from stages.intent_divide.models import IntentDivideStatus
+from stages.sql_generation.divide_resume import build_intent_divide_resume_query
 from stages.sql_generation.dag import DAGScheduler, SchedulerConfig
 from stages.sql_generation.dag.models import GlobalState, NodeStatus
 from stages.sql_generation.intent.dialog import create_dialog_ticket, get_active_dialog_ticket, submit_dialog_user_message
@@ -184,7 +185,32 @@ def _run_sql_generation_stage_impl(
         # If queue has no active ticket (should be rare), at least surface which intent is blocked.
         if ticket is None:
             intent_id = _first_wait_user_intent_id(scheduler.state)
-            ticket = {"intent_id": intent_id, "note": "intent WAIT_USER but dialog queue is empty"}
+            candidate_ticket_id = ""
+            if intent_id and intent_id in scheduler.state.intent_map:
+                node = scheduler.state.intent_map[intent_id]
+                final_payload = node.artifacts.get("final") or {}
+                if isinstance(final_payload, dict):
+                    ticket_stub = final_payload.get("ticket") or {}
+                    if isinstance(ticket_stub, dict):
+                        candidate_ticket_id = str(ticket_stub.get("ticket_id") or "")
+            if candidate_ticket_id:
+                repo = get_dialog_repository(scheduler.state)
+                record = repo.get_ticket(candidate_ticket_id)
+                if record and not record.resolved:
+                    ticket = {
+                        "ticket_id": record.ticket_id,
+                        "intent_id": record.intent_id,
+                        "question_id": record.question_id,
+                        "thread_id": record.thread_id,
+                        "created_at": record.created_at,
+                        "phase": record.phase,
+                        "payload": dict(record.payload),
+                        "turns": list(record.turns),
+                        "resolved": bool(record.resolved),
+                        "resolution_type": record.resolution_type.value if record.resolution_type else "",
+                    }
+            if ticket is None:
+                ticket = {"intent_id": intent_id, "note": "intent WAIT_USER but dialog queue is empty"}
         return SQLStageResult(status=StageStatus.WAIT_USER, state=scheduler.state, dialog_ticket=ticket)
 
     failed = [n for n in scheduler.state.intent_map.values() if n.status == NodeStatus.FAILED]
@@ -214,12 +240,20 @@ def resume_sql_generation_stage_after_user_reply(
         if expected_ticket_id and ticket_id != expected_ticket_id:
             return SQLStageResult(status=StageStatus.FAILED, state=state, error="divide-stage ticket_id mismatch")
         repo = get_dialog_repository(state)
+        record = repo.get_ticket(ticket_id)
+        if record is None:
+            return SQLStageResult(status=StageStatus.FAILED, state=state, error="divide-stage unknown ticket_id")
+        if record.resolved:
+            return SQLStageResult(status=StageStatus.FAILED, state=state, error="divide-stage ticket already resolved")
         ticket = repo.append_turn(ticket_id=ticket_id, user_message=user_message)
         repo.mark_resolved(ticket_id, DialogResolutionType.RESOLVED)
         previous_messages = [str(turn.get("user_message") or "") for turn in list(ticket.turns or []) if str(turn.get("user_message") or "").strip()]
-        enriched_query = str(state.config.get("divide_query") or "").strip()
-        if previous_messages:
-            enriched_query = enriched_query + "\n\n用户补充信息:\n" + "\n".join(f"- {message}" for message in previous_messages)
+        enriched_query = build_intent_divide_resume_query(
+            original_query=str(state.config.get("divide_query") or "").strip(),
+            question_id=str(ticket.question_id or ""),
+            ticket_payload=dict(ticket.payload or {}),
+            user_messages=previous_messages,
+        )
         merged_context = dict(state.config.get("context") or {})
         if context:
             merged_context.update(context)
@@ -231,6 +265,19 @@ def resume_sql_generation_stage_after_user_reply(
         )
         resumed.state.config["divide_query"] = str(state.config.get("divide_query") or enriched_query)
         return resumed
+
+    # Validate ticket before mutating state (avoid replying to wrong/resolved tickets).
+    repo = get_dialog_repository(state)
+    record = repo.get_ticket(ticket_id)
+    if record is None:
+        return SQLStageResult(status=StageStatus.FAILED, state=state, error="unknown ticket_id")
+    if record.resolved:
+        return SQLStageResult(status=StageStatus.FAILED, state=state, error="ticket already resolved")
+    if record.intent_id not in state.intent_map:
+        return SQLStageResult(status=StageStatus.FAILED, state=state, error=f"ticket intent_id not found in state: {record.intent_id}")
+    resume_phase = str((record.payload or {}).get("resume_phase") or "").strip()
+    if resume_phase and str(record.phase or "").strip() and resume_phase != str(record.phase):
+        return SQLStageResult(status=StageStatus.FAILED, state=state, error="ticket phase/resume_phase mismatch")
 
     dialog_out = submit_dialog_user_message(state=state, ticket_id=ticket_id, user_message=user_message, model_name=resolved_model_name)
     intent_id = str(dialog_out.get("intent_id") or "")
@@ -250,7 +297,9 @@ def resume_sql_generation_stage_after_user_reply(
     scheduler.drain_events()
 
     if context:
-        scheduler.state.config["context"] = dict(context)
+        merged_context = dict(scheduler.state.config.get("context") or {})
+        merged_context.update(dict(context))
+        scheduler.state.config["context"] = merged_context
 
     runtime_config = WorkerRuntimeConfig(
         model_name=resolved_model_name,
