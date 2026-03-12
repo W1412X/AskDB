@@ -34,6 +34,13 @@ class DialogRepository:
             payload=dict(payload),
             thread_id=thread_id or new_id("thread"),
         )
+        # Track "question evolution" in a minimal, durable way.
+        # - Keep history in payload (no schema changes required)
+        # - Bound history length for safety
+        if isinstance(record.payload, dict) and "ask" in record.payload and "ask_history" not in record.payload:
+            record.payload["ask_history"] = [
+                {"at": record.created_at, "source": "create_ticket", "ask": dict(record.payload.get("ask") or {})}
+            ]
         self._state.dialog_state.tickets[ticket_id] = record
         self._state.dialog_state.queue.append(ticket_id)
         return record
@@ -74,6 +81,20 @@ class DialogRepository:
                 "message_id": msg_id,
             }
         )
+        return ticket
+
+    def record_ask_update(self, *, ticket_id: str, ask: Dict[str, Any], source: str = "clarifier", summary: str = "") -> DialogTicketRecord:
+        ticket = self._state.dialog_state.tickets.get(ticket_id)
+        if ticket is None:
+            raise ValueError(f"unknown ticket_id: {ticket_id}")
+        payload = ticket.payload if isinstance(ticket.payload, dict) else {}
+        history = payload.get("ask_history")
+        if not isinstance(history, list):
+            history = []
+        history.append({"at": time.time(), "source": str(source or ""), "summary": str(summary or "")[:200], "ask": dict(ask or {})})
+        payload["ask_history"] = history[-10:]
+        payload["ask"] = dict(ask or {})
+        ticket.payload = payload
         return ticket
 
     def mark_resolved(self, ticket_id: str, resolution_type: DialogResolutionType) -> DialogTicketRecord:

@@ -173,7 +173,7 @@ def submit_dialog_user_message(
         }
 
     if next_ask:
-        ticket.payload["ask"] = dict(next_ask)
+        repo.record_ask_update(ticket_id=ticket_id, ask=dict(next_ask), source="clarifier", summary=out.summary)
     return {
         "ok": True,
         "resolved": False,

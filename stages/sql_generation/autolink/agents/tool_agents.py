@@ -166,10 +166,18 @@ def _run_retrieval_executor(
     )
     raw_result, attempt = _invoke_tool("SchemaRetrievalAgent", "schema_retrieval", tool, tool_args)
     plan = _extract_schema_write_plan(raw_result)
+    diagnostics = raw_result.get("diagnostics") if isinstance(raw_result, dict) else None
     return ToolAgentOutput(
         ok=attempt.ok,
         summary="retrieval executed",
-        observations=[{"tool_name": "schema_retrieval", "ok": attempt.ok, "result_preview": attempt.result_preview}],
+        observations=[
+            {
+                "tool_name": "schema_retrieval",
+                "ok": attempt.ok,
+                "result_preview": attempt.result_preview,
+                "diagnostics": diagnostics or {},
+            }
+        ],
         tool_calls=[attempt],
         errors=[attempt.error] if attempt.error else [],
         schema_write_plan=plan,

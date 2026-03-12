@@ -24,15 +24,15 @@ from stages.sql_generation.autolink.initialize_catalog import (
 )
 
 
-def _search_local(text: str, databases: List[str], top_k: int) -> List[Dict[str, Any]]:
+def _search_local(text: str, databases: List[str], top_k: int) -> tuple[List[Dict[str, Any]], str]:
     try:
         from stages.initialize.embedding.query import get_columns_by_text
 
         cols = get_columns_by_text(text=text, databases=databases)
         cols = sorted(cols, key=lambda x: x.get("similarity", 0), reverse=True)[: int(top_k)]
-        return cols
-    except Exception:
-        return []
+        return cols, ""
+    except Exception as exc:
+        return [], f"{type(exc).__name__}:{str(exc)[:200]}"
 
 
 def _extract_keywords(text: str) -> List[str]:
@@ -138,11 +138,19 @@ def schema_retrieval_tool(
     db_list = [str(d) for d in db_list if d]
     schema_name = schema_name or (db_list[0] if db_list else "")
 
-    cols = _search_local(text=text, databases=db_list, top_k=top_k)
+    cols, local_error = _search_local(text=text, databases=db_list, top_k=top_k)
+    diagnostics: Dict[str, Any] = {
+        "mode": "local" if cols else "db_fallback",
+        "local_error": local_error,
+        "local_result_count": len(cols),
+        "keywords": [],
+        "db_result_count": 0,
+    }
     if not cols:
         keywords = _extract_keywords(text)
         if not keywords:
             keywords = [text[:50]]
+        diagnostics["keywords"] = keywords
         aggregated: List[Dict[str, Any]] = []
         seen_pairs = set()
         for kw in keywords:
@@ -157,6 +165,7 @@ def schema_retrieval_tool(
             if len(aggregated) >= top_k:
                 break
         cols = aggregated
+        diagnostics["db_result_count"] = len(cols)
 
     # Best-effort local hydration: use initialize JSON to fill types/samples/semantic_summary,
     # and to expand table-only hits ("*") into real columns when possible.
@@ -207,6 +216,7 @@ def schema_retrieval_tool(
         "ok": True,
         "retrieved_columns": cols,
         "columns": cols,
+        "diagnostics": diagnostics,
         "evidence": [
             {
                 "source": "initialize_json" if item.get("semantic_summary") or item.get("sample_values") or item.get("data_type") else "tool",

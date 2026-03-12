@@ -630,6 +630,17 @@ def run_intent_node(
             )
 
         _apply_step_artifacts(node, step)
+        trace.record(
+            "STEP_RESULT",
+            {
+                "phase": phase.value,
+                "status": step.status.value,
+                "next_phase": step.next_phase.value,
+                "error_class": step.error_class,
+                "evidence": list(step.new_evidence or [])[:5],
+                "errors": [e.type for e in list(step.errors or [])[:3]],
+            },
+        )
         checkpoint.artifacts = {
             "schema_present": bool((node.artifacts.get("schema") or {}).get("databases")),
             "ra_present": bool(node.artifacts.get("ra_plan")),
